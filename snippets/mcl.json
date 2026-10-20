@@ -1,0 +1,62 @@
+{
+  "MCL module": {
+    "prefix": "module",
+    "body": ["let ${1:name} = ${2:\"value\"}", "", "emit ${1:name}"],
+    "description": "値を定義して出力するMCL module"
+  },
+  "MCL manifest": {
+    "prefix": "manifest",
+    "body": [
+      "let ${1:deployment} =",
+      "  apiVersion: \"apps/v1\"",
+      "  kind: \"Deployment\"",
+      "  metadata:",
+      "    name: \"${2:app}\"",
+      "  spec:",
+      "    replicas: ${3:2}",
+      "    selector:",
+      "      matchLabels:",
+      "        app: \"${2:app}\"",
+      "    template:",
+      "      metadata:",
+      "        labels:",
+      "          app: \"${2:app}\"",
+      "      spec:",
+      "        containers:",
+      "          - name: \"${2:app}\"",
+      "            image: \"${4:example.test/app:v1}\"",
+      "",
+      "emit ${1:deployment}"
+    ],
+    "description": "Kubernetes Deployment manifest"
+  },
+  "MCL import": {
+    "prefix": "import",
+    "body": ["import \"./${1:module}.mcl\" as ${2:module}"],
+    "description": "別のMCL moduleをimportする"
+  },
+  "MCL typed value": {
+    "prefix": "typed",
+    "body": [
+      "type ${1:Resource} = {",
+      "  name: String,",
+      "  replicas?: Int,",
+      "}",
+      "",
+      "let ${2:resource}: ${1:Resource} =",
+      "  name: \"${3:app}\"",
+      "  replicas: ${4:2}"
+    ],
+    "description": "構造型と型付き値を定義する"
+  },
+  "MCL validation": {
+    "prefix": "validate",
+    "body": ["validate ${1:resource} using ${2:ruleName}"],
+    "description": "値にRuleを適用する"
+  },
+  "MCL multiline function call": {
+    "prefix": "call",
+    "body": ["${1:functionName}(", "  ${2:argument},", ")"],
+    "description": "末尾カンマ付きの複数行関数呼び出し"
+  }
+}

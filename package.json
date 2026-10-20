@@ -1,0 +1,122 @@
+{
+  "name": "mcl-vscode",
+  "displayName": "MCL",
+  "version": "0.1.0",
+  "description": "MCL language support for Visual Studio Code",
+  "categories": [
+    "Formatters",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "kubernetes",
+    "language server",
+    "mcl"
+  ],
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/manifest-configuration-language/vscode.git"
+  },
+  "publisher": "walnuts1018",
+  "main": "./dist/extension.js",
+  "scripts": {
+    "compile": "node esbuild.mjs && tsc --noEmit",
+    "test": "node --test test/*.test.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "lint": "oxlint src test esbuild.mjs",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "package": "pnpm run compile && vsce package --no-dependencies"
+  },
+  "dependencies": {
+    "vscode-languageclient": "10.1.2"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "@types/vscode": "1.140.0",
+    "@vscode/vsce": "4.0.0",
+    "esbuild": "0.28.2",
+    "oxfmt": "0.73.0",
+    "oxlint": "1.89.0",
+    "typescript": "7.0.2"
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "mcl",
+        "aliases": [
+          "MCL",
+          "mcl"
+        ],
+        "extensions": [
+          ".mcl"
+        ],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "images/mcl.svg",
+          "dark": "images/mcl.svg"
+        }
+      }
+    ],
+    "grammars": [
+      {
+        "language": "mcl",
+        "scopeName": "source.mcl",
+        "path": "./syntaxes/mcl.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "mcl",
+        "path": "./snippets/mcl.json"
+      }
+    ],
+    "configuration": {
+      "title": "MCL",
+      "properties": {
+        "mcl.server.path": {
+          "type": "string",
+          "default": "mcl",
+          "description": "MCL実行ファイルのpath。PATH上の実行ファイル名または絶対pathを指定します。"
+        },
+        "mcl.server.args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "lsp"
+          ],
+          "description": "Language Server起動時にMCL実行ファイルへ渡す引数です。"
+        },
+        "mcl.trace.server": {
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "Language Server Protocolの通信ログを出力します。"
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "mcl.restartLanguageServer",
+        "title": "MCL: Restart Language Server"
+      },
+      {
+        "command": "mcl.showLanguageServerOutput",
+        "title": "MCL: Show Language Server Output"
+      }
+    ]
+  },
+  "activationEvents": [
+    "onLanguage:mcl"
+  ],
+  "engines": {
+    "vscode": "^1.142.0"
+  },
+  "packageManager": "pnpm@12.14.0"
+}

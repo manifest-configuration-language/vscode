@@ -1,0 +1,11 @@
+.github/**
+.gitignore
+mise.toml
+pnpm-lock.yaml
+pnpm-workspace.yaml
+esbuild.mjs
+tsconfig.json
+test/**
+src/**
+dist/**/*.map
+node_modules/**
