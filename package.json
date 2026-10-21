@@ -26,7 +26,7 @@
     "lint": "oxlint src test esbuild.mjs",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
-    "package": "pnpm run compile && vsce package --no-dependencies"
+    "package": "pnpm run compile && vsce package --no-dependencies && node scripts/verify-vsix.mjs"
   },
   "dependencies": {
     "vscode-languageclient": "10.1.2"

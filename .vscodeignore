@@ -7,6 +7,7 @@ pnpm-workspace.yaml
 esbuild.mjs
 tsconfig.json
 test/**
+scripts/**
 src/**
 dist/**/*.map
 node_modules/**
