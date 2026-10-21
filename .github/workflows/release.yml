@@ -94,11 +94,16 @@ jobs:
           RELEASE_VERSION: ${{ steps.target.outputs.version }}
         run: |
           set -euo pipefail
+          release_flags=()
+          if [[ "$RELEASE_VERSION" == *-* ]]; then
+            release_flags+=(--prerelease)
+          fi
           gh release create "$RELEASE_TAG" dist/*.vsix \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
             --title "MCL VS Code $RELEASE_VERSION" \
-            --generate-notes
+            --generate-notes \
+            "${release_flags[@]}"
 
       # Marketplace公開時はVSCE_PATをRepository secretsに登録して有効化します。
       # - name: Publish to Visual Studio Marketplace
