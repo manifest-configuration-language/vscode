@@ -1,4 +1,5 @@
 .github/**
+renovate.json
 .gitignore
 mise.toml
 pnpm-lock.yaml
