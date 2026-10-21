@@ -1,0 +1,107 @@
+name: Package VS Code extension
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version from package.json. Empty uses the current manifest version.
+        required: false
+        type: string
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vscode-release-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up mise
+        uses: jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5.2.1
+        with:
+          install: true
+          cache: true
+
+      - name: Resolve release version
+        id: target
+        env:
+          RELEASE_VERSION_INPUT: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          package_version="$(node -p "require('./package.json').version")"
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            release_version="${GITHUB_REF_NAME#v}"
+          else
+            release_version="${RELEASE_VERSION_INPUT:-$package_version}"
+          fi
+          [[ "$release_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]
+          if [ "$release_version" != "$package_version" ]; then
+            echo "Release version $release_version must match package.json version $package_version." >&2
+            exit 1
+          fi
+          echo "version=$release_version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$release_version" >> "$GITHUB_OUTPUT"
+
+      - name: Run extension checks
+        run: |
+          mise run test
+          mise run lint
+          mise run format:check
+
+      - name: Build VSIX
+        env:
+          RELEASE_VERSION: ${{ steps.target.outputs.version }}
+        run: |
+          set -euo pipefail
+          mise run compile
+          mkdir -p dist
+          pnpm exec vsce package --no-dependencies --out "dist/mcl-${RELEASE_VERSION}.vsix"
+
+      - name: Attest VSIX
+        if: github.repository_visibility == 'public'
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: dist/*.vsix
+
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mcl-vscode-${{ steps.target.outputs.version }}
+          path: dist/*.vsix
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.target.outputs.tag }}
+          RELEASE_VERSION: ${{ steps.target.outputs.version }}
+        run: |
+          set -euo pipefail
+          gh release create "$RELEASE_TAG" dist/*.vsix \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "MCL VS Code $RELEASE_VERSION" \
+            --generate-notes
+
+      # Marketplace公開時はVSCE_PATをRepository secretsに登録して有効化します。
+      # - name: Publish to Visual Studio Marketplace
+      #   run: pnpm exec vsce publish --packagePath "dist/mcl-${RELEASE_VERSION}.vsix"
+      #   env:
+      #     VSCE_PAT: ${{ secrets.VSCE_PAT }}
