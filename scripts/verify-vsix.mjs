@@ -1,16 +1,19 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { readFile, readdir } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import textmate from "vscode-textmate";
 import oniguruma from "vscode-oniguruma";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const sourceManifest = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
-const archivePath = join(root, `${sourceManifest.name}-${sourceManifest.version}.vsix`);
-const archives = (await readdir(root)).filter((name) => name.endsWith(".vsix"));
-if (!archives.includes(`${sourceManifest.name}-${sourceManifest.version}.vsix`)) {
+const archivePath = process.argv[2]
+  ? resolve(process.cwd(), process.argv[2])
+  : join(root, `${sourceManifest.name}-${sourceManifest.version}.vsix`);
+try {
+  await readFile(archivePath);
+} catch {
   throw new Error(`VSIX archive is missing: ${archivePath}`);
 }
 
@@ -76,6 +79,15 @@ for (const grammar of grammars) {
     ['type App = schema("schema.json")', "schema"],
     ['let label = key("app")', "key"],
   ];
+  const identifierSource = 'let greeting = "hello"';
+  const identifierTokens = textmateGrammar.tokenizeLine(identifierSource).tokens;
+  const identifierToken = identifierTokens.find(
+    (token) => identifierSource.slice(token.startIndex, token.endIndex) === "greeting",
+  );
+  assert.ok(
+    identifierToken?.scopes.includes("variable.other.mcl"),
+    `Expected identifiers to have variable.other.mcl scope; got ${JSON.stringify(identifierTokens)}`,
+  );
   for (const [source, keyword] of keywordFixtures) {
     const tokens = textmateGrammar.tokenizeLine(source).tokens;
     const keywordToken = tokens.find(
