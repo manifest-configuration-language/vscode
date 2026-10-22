@@ -109,7 +109,8 @@ jobs:
           subject-path: dist/*.vsix
 
   publish-marketplace:
-    needs: package
+    needs: [package, attest]
+    if: ${{ always() && needs.package.result == 'success' && (needs.attest.result == 'success' || needs.attest.result == 'skipped') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
