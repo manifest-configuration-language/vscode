@@ -1,4 +1,5 @@
 .github/**
+.vscode-test.mjs
 renovate.json
 .gitignore
 mise.toml

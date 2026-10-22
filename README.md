@@ -41,10 +41,14 @@ Windowsでは`mcl.server.path`に`mcl.exe`のpathを設定します。
 
 ## 開発
 
+`pnpm run test:integration`はVS Code Extension Hostを起動して、MCL v0.1.0 CLIとの診断と整形を確認します。CLIは`.vscode-test/mcl-cli/mcl`に配置してください。CIはリリースアーカイブのチェックサムを検証してから配置します。
+
 ```sh
 pnpm install
 pnpm run compile
 pnpm run lint
 pnpm run format:check
+pnpm run test
+pnpm run test:integration
 pnpm run package
 ```

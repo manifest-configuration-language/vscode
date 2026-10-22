@@ -22,6 +22,7 @@
   "scripts": {
     "compile": "node esbuild.mjs && tsc --noEmit",
     "test": "node --test test/*.test.mjs",
+    "test:integration": "vscode-test",
     "watch": "node esbuild.mjs --watch",
     "lint": "oxlint src test esbuild.mjs",
     "format": "oxfmt .",
@@ -34,6 +35,8 @@
   "devDependencies": {
     "@types/node": "24.19.2",
     "@types/vscode": "1.140.0",
+    "@vscode/test-cli": "0.0.15",
+    "@vscode/test-electron": "3.1.0",
     "@vscode/vsce": "4.0.0",
     "esbuild": "0.28.2",
     "oxfmt": "0.73.0",

@@ -28,9 +28,28 @@ jobs:
           install: true
           cache: true
       - run: mise run install
+      - name: Download and verify released MCL CLI
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version="0.1.0"
+          archive="mcl_${version}_linux_amd64.tar.gz"
+          install_dir="$GITHUB_WORKSPACE/.vscode-test/mcl-cli"
+          mkdir -p "$install_dir"
+          gh release download "v${version}" \
+            --repo manifest-configuration-language/mcl \
+            --pattern "$archive" \
+            --pattern SHA256SUMS \
+            --dir "$install_dir"
+          (cd "$install_dir" && grep " $archive$" SHA256SUMS | sha256sum --check)
+          tar -xzf "$install_dir/$archive" -C "$install_dir"
+          mv "$install_dir/mcl-linux-amd64" "$install_dir/mcl"
       - parallel:
           - name: Run extension tests
             run: pnpm run test
+          - name: Run VS Code language server integration tests
+            run: xvfb-run -a pnpm run test:integration
           - name: Lint extension
             run: pnpm run lint
           - name: Check formatting
