@@ -7,9 +7,6 @@ suite("MCL language server", () => {
   test("publishes diagnostics and formats an MCL document", async () => {
     const workspace = vscode.workspace.workspaceFolders?.[0];
     assert.ok(workspace, "The integration test requires a workspace folder");
-    const binary = path.join(workspace.uri.fsPath, ".vscode-test/mcl-cli/mcl");
-    await fs.access(binary);
-
     const configuration = vscode.workspace.getConfiguration("mcl", workspace.uri);
     const invalidPath = path.join(workspace.uri.fsPath, `test/.lsp-${process.pid}.mcl`);
     const formatPath = path.join(workspace.uri.fsPath, `test/.format-${process.pid}.mcl`);
@@ -21,7 +18,7 @@ suite("MCL language server", () => {
     const formatUri = vscode.Uri.file(formatPath);
     const languageFeaturesUri = vscode.Uri.file(languageFeaturesPath);
     try {
-      await configuration.update("server.path", binary, vscode.ConfigurationTarget.Global);
+      await configuration.update("server.path", "mcl", vscode.ConfigurationTarget.Global);
       const extension = vscode.extensions.getExtension("walnuts1018.mcl-vscode");
       assert.ok(extension, "The MCL extension must be available in the test host");
       await extension.activate();
