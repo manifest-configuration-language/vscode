@@ -84,9 +84,7 @@ for (const grammar of grammars) {
     ["let predicate = fn(value) => value", "=>"],
     ["fn resourceName(name: String) -> String = name", "->"],
   ];
-  const identifierFixtures = [
-    ['let is = 1', "is"],
-  ];
+  const identifierFixtures = [["let is = 1", "is"]];
   const commentFixtures = [
     { source: "foo#bar", comment: "#bar", isComment: false },
     { source: "foo #bar", comment: "#bar", isComment: true },
