@@ -76,6 +76,7 @@ jobs:
         run: |
           set -euo pipefail
           mise run compile
+          node scripts/prepare-vsix.mjs
           mkdir -p dist
           pnpm exec vsce package --no-dependencies --out "dist/mcl-${RELEASE_VERSION}.vsix"
           node scripts/verify-vsix.mjs "dist/mcl-${RELEASE_VERSION}.vsix"

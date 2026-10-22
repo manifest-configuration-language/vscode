@@ -27,9 +27,10 @@
     "lint": "oxlint src test esbuild.mjs",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
-    "package": "pnpm run compile && vsce package --no-dependencies && node scripts/verify-vsix.mjs"
+    "package": "pnpm run compile && node scripts/prepare-vsix.mjs && vsce package --no-dependencies && node scripts/verify-vsix.mjs"
   },
   "dependencies": {
+    "@manifest-configuration-language/language": "0.1.1",
     "vscode-languageclient": "10.1.2"
   },
   "devDependencies": {
@@ -67,7 +68,7 @@
       {
         "language": "mcl",
         "scopeName": "source.mcl",
-        "path": "./syntaxes/mcl.tmLanguage.json"
+        "path": "./dist/mcl.tmLanguage.json"
       }
     ],
     "snippets": [

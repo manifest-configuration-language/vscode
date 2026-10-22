@@ -2,5 +2,5 @@ allowBuilds:
   "@vscode/vsce-sign": true
   esbuild: true
 minimumReleaseAgeExclude:
-  - oxlint@1.89.0
+  - oxlint
   - "@oxlint/*"

@@ -43,6 +43,8 @@ for (const assetPath of archiveAssetPaths) {
 
 const grammars = packagedManifest.contributes?.grammars ?? [];
 if (grammars.length === 0) throw new Error("VSIX does not declare a TextMate grammar.");
+const languageGrammarPath = import.meta.resolve("@manifest-configuration-language/language/textmate");
+const languageGrammar = JSON.parse(await readFile(new URL(languageGrammarPath), "utf8"));
 
 for (const grammar of grammars) {
   const archiveEntry = `extension/${grammar.path.replace(/^\.\//, "")}`;
@@ -52,6 +54,11 @@ for (const grammar of grammars) {
 
   const packagedGrammar = JSON.parse(
     execFileSync("unzip", ["-p", archivePath, archiveEntry], { encoding: "utf8" }),
+  );
+  assert.deepEqual(
+    packagedGrammar,
+    languageGrammar,
+    `VSIX grammar differs from @manifest-configuration-language/language: ${archiveEntry}`,
   );
   if (packagedGrammar.scopeName !== grammar.scopeName || !Array.isArray(packagedGrammar.patterns)) {
     throw new Error(`VSIX grammar does not match its manifest: ${archiveEntry}`);
