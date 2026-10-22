@@ -30,7 +30,7 @@
     "package": "pnpm run compile && node scripts/prepare-vsix.mjs && vsce package --no-dependencies && node scripts/verify-vsix.mjs"
   },
   "dependencies": {
-    "@manifest-configuration-language/language": "0.1.1",
+    "@manifest-configuration-language/language": "0.1.2",
     "vscode-languageclient": "10.1.2"
   },
   "devDependencies": {
