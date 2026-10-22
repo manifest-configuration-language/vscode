@@ -67,15 +67,25 @@ for (const grammar of grammars) {
   });
   const textmateGrammar = await registry.loadGrammar(grammar.scopeName);
   assert.ok(textmateGrammar, `VSIX grammar does not load: ${grammar.scopeName}`);
-  const source = "rule hardened(container: Container):";
-  const tokens = textmateGrammar.tokenizeLine(source).tokens;
-  const ruleToken = tokens.find(
-    (token) => source.slice(token.startIndex, token.endIndex) === "rule",
-  );
-  assert.ok(
-    ruleToken?.scopes.includes("keyword.control.mcl"),
-    `Expected the rule declaration keyword to be highlighted; got ${JSON.stringify(tokens)}`,
-  );
+  const keywordFixtures = [
+    ["rule hardened(container: Container):", "rule"],
+    ['require container.enabled == false message "disabled"', "message"],
+    ["let deployment = node:", "node"],
+    ["let updated = base with:", "with"],
+    ["let updated = base without:", "without"],
+    ['type App = schema("schema.json")', "schema"],
+    ['let label = key("app")', "key"],
+  ];
+  for (const [source, keyword] of keywordFixtures) {
+    const tokens = textmateGrammar.tokenizeLine(source).tokens;
+    const keywordToken = tokens.find(
+      (token) => source.slice(token.startIndex, token.endIndex) === keyword,
+    );
+    assert.ok(
+      keywordToken?.scopes.includes("keyword.control.mcl"),
+      `Expected ${JSON.stringify(keyword)} to have keyword.control.mcl scope; got ${JSON.stringify(tokens)}`,
+    );
+  }
   registry.dispose();
 }
 
