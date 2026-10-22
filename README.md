@@ -4,7 +4,7 @@
 
 ## インストール
 
-MCL CLIを[インストール](https://github.com/manifest-configuration-language/mcl)し、`mcl`コマンドをPATHから実行できる状態にします。拡張のVSIXは次のコマンドで生成できます。
+MCL CLIを[最新リリースからインストール](https://github.com/manifest-configuration-language/mcl/releases/latest)し、`mcl`コマンドをPATHから実行できる状態にします。拡張のVSIXは次のコマンドで生成できます。
 
 ```sh
 pnpm install
@@ -41,7 +41,7 @@ Windowsでは`mcl.server.path`に`mcl.exe`のpathを設定します。
 
 ## 開発
 
-`mise install`でMCL v0.1.0 CLIを含む開発ツールをインストールしてから、`pnpm run test:integration`を実行します。統合テストはPATH上の`mcl`コマンドを起動し、診断と整形を確認します。
+`mise install`で`mise.toml`が指定するMCL CLIを含む開発ツールをインストールしてから、`pnpm run test:integration`を実行します。統合テストはPATH上の`mcl`コマンドを起動し、診断と整形を確認します。
 
 ```sh
 mise install
