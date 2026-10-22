@@ -43,7 +43,8 @@ for (const assetPath of archiveAssetPaths) {
 
 const grammars = packagedManifest.contributes?.grammars ?? [];
 if (grammars.length === 0) throw new Error("VSIX does not declare a TextMate grammar.");
-const languageGrammarPath = import.meta.resolve("@manifest-configuration-language/language/textmate");
+const languageGrammarPath = import.meta
+  .resolve("@manifest-configuration-language/language/textmate");
 const languageGrammar = JSON.parse(await readFile(new URL(languageGrammarPath), "utf8"));
 
 for (const grammar of grammars) {

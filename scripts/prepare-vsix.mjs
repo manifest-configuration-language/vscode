@@ -7,7 +7,8 @@ const manifest = JSON.parse(await readFile(resolve(root, "package.json"), "utf8"
 const grammar = manifest.contributes?.grammars?.find((entry) => entry.scopeName === "source.mcl");
 if (!grammar) throw new Error("package.json does not declare the source.mcl grammar.");
 
-const grammarPackagePath = import.meta.resolve("@manifest-configuration-language/language/textmate");
+const grammarPackagePath = import.meta
+  .resolve("@manifest-configuration-language/language/textmate");
 const grammarSource = await readFile(new URL(grammarPackagePath), "utf8");
 JSON.parse(grammarSource);
 
