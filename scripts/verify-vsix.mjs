@@ -79,6 +79,11 @@ for (const grammar of grammars) {
     ['type App = schema("schema.json")', "schema"],
     ['let label = key("app")', "key"],
   ];
+  const operatorFixtures = [
+    ['let value = optional ?? "fallback"', "??"],
+    ["let predicate = fn(value) => value", "=>"],
+    ["fn resourceName(name: String) -> String = name", "->"],
+  ];
   const identifierSource = 'let greeting = "hello"';
   const identifierTokens = textmateGrammar.tokenizeLine(identifierSource).tokens;
   const identifierToken = identifierTokens.find(
@@ -96,6 +101,16 @@ for (const grammar of grammars) {
     assert.ok(
       keywordToken?.scopes.includes("keyword.control.mcl"),
       `Expected ${JSON.stringify(keyword)} to have keyword.control.mcl scope; got ${JSON.stringify(tokens)}`,
+    );
+  }
+  for (const [source, operator] of operatorFixtures) {
+    const tokens = textmateGrammar.tokenizeLine(source).tokens;
+    const operatorToken = tokens.find(
+      (token) => source.slice(token.startIndex, token.endIndex) === operator,
+    );
+    assert.ok(
+      operatorToken?.scopes.includes("keyword.operator.mcl"),
+      `Expected ${JSON.stringify(operator)} to have keyword.operator.mcl scope; got ${JSON.stringify(tokens)}`,
     );
   }
   registry.dispose();
