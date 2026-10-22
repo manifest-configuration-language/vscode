@@ -91,6 +91,7 @@ jobs:
     needs: package
     if: github.repository_visibility == 'public'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
       id-token: write
@@ -110,6 +111,7 @@ jobs:
   publish-marketplace:
     needs: package
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
     steps:
@@ -154,6 +156,7 @@ jobs:
   release:
     needs: [package, publish-marketplace]
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: write
     steps:
