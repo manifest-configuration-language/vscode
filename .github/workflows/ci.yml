@@ -44,7 +44,14 @@ jobs:
             --pattern "$archive" \
             --pattern SHA256SUMS \
             --dir "$install_dir"
-          (cd "$install_dir" && sha256sum --ignore-missing --check SHA256SUMS)
+          (
+            cd "$install_dir"
+            checksum_result="$(sha256sum --ignore-missing --check SHA256SUMS)"
+            if [ "$checksum_result" != "$archive: OK" ]; then
+              printf 'Expected one valid checksum entry for %s, received: %s\n' "$archive" "$checksum_result" >&2
+              exit 1
+            fi
+          )
           tar -xzf "$install_dir/$archive" -C "$install_dir"
           mv "$install_dir/mcl-linux-amd64" "$install_dir/mcl"
       - parallel:
