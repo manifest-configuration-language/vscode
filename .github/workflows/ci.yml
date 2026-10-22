@@ -51,7 +51,9 @@ jobs:
           - name: Run extension tests
             run: pnpm run test
           - name: Run VS Code language server integration tests
-            run: xvfb-run -a pnpm run test:integration --code-version 1.140.0
+            run: |
+              vscode_version="$(node -p "require('./node_modules/@types/vscode/package.json').version")"
+              xvfb-run -a pnpm run test:integration --code-version "$vscode_version"
           - name: Lint extension
             run: pnpm run lint
           - name: Check formatting
