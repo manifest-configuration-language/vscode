@@ -22,10 +22,11 @@ jobs:
   package:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    outputs:
+      version: ${{ steps.target.outputs.version }}
+      tag: ${{ steps.target.outputs.tag }}
     permissions:
-      contents: write
-      id-token: write
-      attestations: write
+      contents: read
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -79,16 +80,62 @@ jobs:
           pnpm exec vsce package --no-dependencies --out "dist/mcl-${RELEASE_VERSION}.vsix"
           node scripts/verify-vsix.mjs "dist/mcl-${RELEASE_VERSION}.vsix"
 
-      # GitHub FreeではPrivateリポジトリのArtifact Attestationを利用できないため、公開時のみ生成します。
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mcl-vscode-${{ steps.target.outputs.version }}
+          path: dist/*.vsix
+          if-no-files-found: error
+
+  attest:
+    needs: package
+    if: github.repository_visibility == 'public'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - name: Download VSIX artifact
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: mcl-vscode-${{ needs.package.outputs.version }}
+          path: dist
+
       - name: Attest VSIX
-        if: github.repository_visibility == 'public'
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
         with:
           subject-path: dist/*.vsix
 
+  publish-marketplace:
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up mise
+        uses: jdx/mise-action@fc42bcc7ddbf51124c30f95a877a0c5168a3bfde # v5.2.1
+        with:
+          install: true
+          cache: false
+
+      - name: Install dependencies
+        run: mise run install
+
+      - name: Download VSIX artifact
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: mcl-vscode-${{ needs.package.outputs.version }}
+          path: dist
+
       - name: Publish to Visual Studio Marketplace
         env:
-          RELEASE_VERSION: ${{ steps.target.outputs.version }}
+          RELEASE_VERSION: ${{ needs.package.outputs.version }}
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
         run: |
           set -euo pipefail
@@ -104,19 +151,23 @@ jobs:
             --packagePath "dist/mcl-${RELEASE_VERSION}.vsix" \
             "${publish_flags[@]}"
 
-      - name: Upload VSIX artifact
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+  release:
+    needs: [package, publish-marketplace]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download VSIX artifact
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: mcl-vscode-${{ steps.target.outputs.version }}
-          path: dist/*.vsix
-          if-no-files-found: error
+          name: mcl-vscode-${{ needs.package.outputs.version }}
+          path: dist
 
       - name: Create GitHub Release
-        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ steps.target.outputs.tag }}
-          RELEASE_VERSION: ${{ steps.target.outputs.version }}
+          RELEASE_TAG: ${{ needs.package.outputs.tag }}
+          RELEASE_VERSION: ${{ needs.package.outputs.version }}
         run: |
           set -euo pipefail
           release_flags=()
