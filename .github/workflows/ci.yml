@@ -33,11 +33,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          version="0.1.0"
+          tag="$(node -p "require('./mcl-cli-version.json').tag")"
+          [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          version="${tag#v}"
           archive="mcl_${version}_linux_amd64.tar.gz"
           install_dir="$GITHUB_WORKSPACE/.vscode-test/mcl-cli"
           mkdir -p "$install_dir"
-          gh release download "v${version}" \
+          gh release download "$tag" \
             --repo manifest-configuration-language/mcl \
             --pattern "$archive" \
             --pattern SHA256SUMS \
