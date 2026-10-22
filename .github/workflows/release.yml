@@ -111,6 +111,7 @@ jobs:
 
   publish-marketplace:
     needs: [package, attest]
+    environment: marketplace
     if: ${{ always() && needs.package.result == 'success' && (needs.attest.result == 'success' || needs.attest.result == 'skipped') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -138,6 +139,13 @@ jobs:
           name: mcl-vscode-${{ needs.package.outputs.version }}
           path: dist
 
+      - name: Sign in to Microsoft Entra
+        uses: Azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+
       - name: Publish to Visual Studio Marketplace
         env:
           RELEASE_VERSION: ${{ needs.package.outputs.version }}
@@ -148,7 +156,7 @@ jobs:
             publish_flags+=(--pre-release)
           fi
           pnpm exec vsce publish \
-            --oidc \
+            --azure-credential \
             --packagePath "dist/mcl-${RELEASE_VERSION}.vsix" \
             "${publish_flags[@]}"
 
