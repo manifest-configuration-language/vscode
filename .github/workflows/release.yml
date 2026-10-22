@@ -86,6 +86,21 @@ jobs:
         with:
           subject-path: dist/*.vsix
 
+      - name: Publish to Visual Studio Marketplace
+        if: ${{ env.VSCE_PAT != '' }}
+        env:
+          RELEASE_VERSION: ${{ steps.target.outputs.version }}
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          set -euo pipefail
+          publish_flags=(--skip-duplicate)
+          if [[ "$RELEASE_VERSION" == *-* ]]; then
+            publish_flags+=(--pre-release)
+          fi
+          pnpm exec vsce publish \
+            --packagePath "dist/mcl-${RELEASE_VERSION}.vsix" \
+            "${publish_flags[@]}"
+
       - name: Upload VSIX artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -111,9 +126,3 @@ jobs:
             --title "MCL VS Code $RELEASE_VERSION" \
             --generate-notes \
             "${release_flags[@]}"
-
-      # Marketplace公開時はVSCE_PATをRepository secretsに登録して有効化します。
-      # - name: Publish to Visual Studio Marketplace
-      #   run: pnpm exec vsce publish --packagePath "dist/mcl-${RELEASE_VERSION}.vsix"
-      #   env:
-      #     VSCE_PAT: ${{ secrets.VSCE_PAT }}
