@@ -146,6 +146,16 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           allow-no-subscriptions: true
 
+      - name: Show Marketplace identity
+        run: |
+          set -euo pipefail
+          profile_id="$(az rest \
+            --url https://app.vssps.visualstudio.com/_apis/profile/profiles/me \
+            --resource 499b84ac-1321-427f-aa17-267ca6975798 \
+            --query id \
+            --output tsv)"
+          echo "Marketplace identity profile ID: ${profile_id}" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Publish to Visual Studio Marketplace
         env:
           RELEASE_VERSION: ${{ needs.package.outputs.version }}
