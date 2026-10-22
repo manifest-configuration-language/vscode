@@ -87,12 +87,15 @@ jobs:
           subject-path: dist/*.vsix
 
       - name: Publish to Visual Studio Marketplace
-        if: ${{ env.VSCE_PAT != '' }}
         env:
           RELEASE_VERSION: ${{ steps.target.outputs.version }}
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
         run: |
           set -euo pipefail
+          if [[ -z "$VSCE_PAT" ]]; then
+            echo "The VSCE_PAT secret is required to publish a release to the Visual Studio Marketplace." >&2
+            exit 1
+          fi
           publish_flags=(--skip-duplicate)
           if [[ "$RELEASE_VERSION" == *-* ]]; then
             publish_flags+=(--pre-release)
