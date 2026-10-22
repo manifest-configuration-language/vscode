@@ -154,7 +154,12 @@ jobs:
             "${publish_flags[@]}"
 
   release:
-    needs: [package, publish-marketplace]
+    needs: [package, attest, publish-marketplace]
+    if: >-
+      always() &&
+      needs.package.result == 'success' &&
+      needs.publish-marketplace.result == 'success' &&
+      (needs.attest.result == 'success' || needs.attest.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
