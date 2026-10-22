@@ -121,7 +121,7 @@
     "onLanguage:mcl"
   ],
   "engines": {
-    "vscode": "^1.142.0"
+    "vscode": "^1.140.0"
   },
   "packageManager": "pnpm@12.14.0"
 }
