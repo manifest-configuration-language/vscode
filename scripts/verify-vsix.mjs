@@ -84,6 +84,11 @@ for (const grammar of grammars) {
     ["let predicate = fn(value) => value", "=>"],
     ["fn resourceName(name: String) -> String = name", "->"],
   ];
+  const commentFixtures = [
+    { source: "foo#bar", comment: "#bar", isComment: false },
+    { source: "foo #bar", comment: "#bar", isComment: true },
+    { source: "#bar", comment: "#bar", isComment: true },
+  ];
   const identifierSource = 'let greeting = "hello"';
   const identifierTokens = textmateGrammar.tokenizeLine(identifierSource).tokens;
   const identifierToken = identifierTokens.find(
@@ -111,6 +116,17 @@ for (const grammar of grammars) {
     assert.ok(
       operatorToken?.scopes.includes("keyword.operator.mcl"),
       `Expected ${JSON.stringify(operator)} to have keyword.operator.mcl scope; got ${JSON.stringify(tokens)}`,
+    );
+  }
+  for (const { source, comment, isComment } of commentFixtures) {
+    const tokens = textmateGrammar.tokenizeLine(source).tokens;
+    const commentToken = tokens.find(
+      (token) => source.slice(token.startIndex, token.endIndex) === comment,
+    );
+    assert.equal(
+      commentToken?.scopes.includes("comment.line.number-sign.mcl") ?? false,
+      isComment,
+      `Expected ${JSON.stringify(comment)} in ${JSON.stringify(source)} to ${isComment ? "have" : "not have"} comment scope; got ${JSON.stringify(tokens)}`,
     );
   }
   registry.dispose();
