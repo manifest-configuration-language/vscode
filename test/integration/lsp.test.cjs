@@ -13,8 +13,13 @@ suite("MCL language server", () => {
     const configuration = vscode.workspace.getConfiguration("mcl", workspace.uri);
     const invalidPath = path.join(workspace.uri.fsPath, `test/.lsp-${process.pid}.mcl`);
     const formatPath = path.join(workspace.uri.fsPath, `test/.format-${process.pid}.mcl`);
+    const languageFeaturesPath = path.join(
+      workspace.uri.fsPath,
+      `test/.language-features-${process.pid}.mcl`,
+    );
     const invalidUri = vscode.Uri.file(invalidPath);
     const formatUri = vscode.Uri.file(formatPath);
+    const languageFeaturesUri = vscode.Uri.file(languageFeaturesPath);
     try {
       await configuration.update("server.path", binary, vscode.ConfigurationTarget.Global);
       const extension = vscode.extensions.getExtension("walnuts1018.mcl-vscode");
@@ -48,9 +53,47 @@ suite("MCL language server", () => {
       formatEdit.set(formatUri, formatEdits);
       await vscode.workspace.applyEdit(formatEdit);
       assert.equal(formatDocument.getText(), 'let value =\n  key: "ok"\nemit value\n');
+
+      await fs.writeFile(languageFeaturesPath, 'let app = "sample"\nemit app\n', "utf8");
+      const languageFeaturesDocument = await vscode.workspace.openTextDocument(languageFeaturesUri);
+      const completions = await vscode.commands.executeCommand(
+        "vscode.executeCompletionItemProvider",
+        languageFeaturesUri,
+        new vscode.Position(1, 8),
+      );
+      const completionItems = Array.isArray(completions) ? completions : (completions?.items ?? []);
+      assert.ok(
+        completionItems.some((completion) => completion.label === "app"),
+        "Expected the language server to complete the current document definition",
+      );
+
+      const definitions = await vscode.commands.executeCommand(
+        "vscode.executeDefinitionProvider",
+        languageFeaturesUri,
+        new vscode.Position(1, 6),
+      );
+      assert.ok(
+        Array.isArray(definitions) && definitions.length > 0,
+        "Expected a definition location",
+      );
+      assert.equal(definitions[0].uri.toString(), languageFeaturesUri.toString());
+      assert.equal(definitions[0].range.start.line, 0);
+
+      const renameEdit = await vscode.commands.executeCommand(
+        "vscode.executeDocumentRenameProvider",
+        languageFeaturesUri,
+        new vscode.Position(1, 6),
+        "service",
+      );
+      assert.ok(renameEdit instanceof vscode.WorkspaceEdit, "Expected a workspace edit for rename");
+      const renamedReferences = renameEdit.entries().flatMap(([, edits]) => edits);
+      assert.equal(renamedReferences.length, 2);
+      assert.ok(renamedReferences.every((edit) => edit.newText === "service"));
+      assert.equal(languageFeaturesDocument.getText(), 'let app = "sample"\nemit app\n');
     } finally {
       await fs.rm(invalidPath, { force: true });
       await fs.rm(formatPath, { force: true });
+      await fs.rm(languageFeaturesPath, { force: true });
       await configuration.update("server.path", undefined, vscode.ConfigurationTarget.Global);
     }
   });
