@@ -116,6 +116,7 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: read
+      id-token: write
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -140,18 +141,14 @@ jobs:
       - name: Publish to Visual Studio Marketplace
         env:
           RELEASE_VERSION: ${{ needs.package.outputs.version }}
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
         run: |
           set -euo pipefail
-          if [[ -z "$VSCE_PAT" ]]; then
-            echo "The VSCE_PAT secret is required to publish a release to the Visual Studio Marketplace." >&2
-            exit 1
-          fi
           publish_flags=(--skip-duplicate)
           if [[ "$RELEASE_VERSION" == *-* ]]; then
             publish_flags+=(--pre-release)
           fi
           pnpm exec vsce publish \
+            --oidc \
             --packagePath "dist/mcl-${RELEASE_VERSION}.vsix" \
             "${publish_flags[@]}"
 
