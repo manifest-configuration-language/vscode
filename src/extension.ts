@@ -8,6 +8,8 @@ import {
 
 const CONFIGURATION_SECTION = "mcl";
 const OUTPUT_CHANNEL_NAME = "MCL Language Server";
+const MCL_CLI_INSTALL_URL =
+  "https://github.com/manifest-configuration-language/mcl/releases/latest";
 
 let client: LanguageClient | undefined;
 let outputChannel: vscode.LogOutputChannel | undefined;
@@ -111,13 +113,27 @@ async function startLanguageClient(): Promise<void> {
 
   try {
     await client.start();
-    outputChannel?.appendLine(`MCL Language Serverを起動しました: ${command} ${args.join(" ")}`);
+    const version = client.initializeResult?.serverInfo?.version;
+    outputChannel?.appendLine(
+      `MCL Language Serverを起動しました${version ? ` (version ${version})` : ""}: ${command} ${args.join(" ")}`,
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     outputChannel?.appendLine(`MCL Language Serverを起動できませんでした: ${message}`);
-    await vscode.window.showErrorMessage(
-      `MCL Language Serverを起動できませんでした。設定 mcl.server.path と実行環境を確認してください。`,
-    );
+    const commandNotFound = error instanceof Error && "code" in error && error.code === "ENOENT";
+    if (commandNotFound) {
+      const selection = await vscode.window.showErrorMessage(
+        "MCL CLIが見つかりません。CLIをインストールしてPATHを確認してください。",
+        "CLIをインストール",
+      );
+      if (selection === "CLIをインストール") {
+        await vscode.env.openExternal(vscode.Uri.parse(MCL_CLI_INSTALL_URL));
+      }
+    } else {
+      await vscode.window.showErrorMessage(
+        "MCL Language Serverを起動できませんでした。設定 mcl.server.path と実行環境を確認してください。",
+      );
+    }
     client = undefined;
   }
 }
