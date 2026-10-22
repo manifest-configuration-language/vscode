@@ -22,7 +22,7 @@
   "scripts": {
     "compile": "node esbuild.mjs && tsc --noEmit",
     "test": "node --test test/*.test.mjs",
-    "test:integration": "vscode-test",
+    "test:integration": "pnpm run compile && vscode-test",
     "watch": "node esbuild.mjs --watch",
     "lint": "oxlint src test esbuild.mjs",
     "format": "oxfmt .",
