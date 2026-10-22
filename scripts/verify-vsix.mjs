@@ -84,6 +84,9 @@ for (const grammar of grammars) {
     ["let predicate = fn(value) => value", "=>"],
     ["fn resourceName(name: String) -> String = name", "->"],
   ];
+  const identifierFixtures = [
+    ['let is = 1', "is"],
+  ];
   const commentFixtures = [
     { source: "foo#bar", comment: "#bar", isComment: false },
     { source: "foo #bar", comment: "#bar", isComment: true },
@@ -116,6 +119,20 @@ for (const grammar of grammars) {
     assert.ok(
       operatorToken?.scopes.includes("keyword.operator.mcl"),
       `Expected ${JSON.stringify(operator)} to have keyword.operator.mcl scope; got ${JSON.stringify(tokens)}`,
+    );
+  }
+  for (const [source, identifier] of identifierFixtures) {
+    const tokens = textmateGrammar.tokenizeLine(source).tokens;
+    const identifierToken = tokens.find(
+      (token) => source.slice(token.startIndex, token.endIndex) === identifier,
+    );
+    assert.ok(
+      identifierToken?.scopes.includes("variable.other.mcl"),
+      `Expected ${JSON.stringify(identifier)} to have variable.other.mcl scope; got ${JSON.stringify(tokens)}`,
+    );
+    assert.ok(
+      !identifierToken.scopes.includes("keyword.operator.mcl"),
+      `Expected ${JSON.stringify(identifier)} not to have keyword.operator.mcl scope; got ${JSON.stringify(tokens)}`,
     );
   }
   for (const { source, comment, isComment } of commentFixtures) {
