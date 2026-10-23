@@ -33,7 +33,7 @@
     "vscode-languageclient": "10.1.2"
   },
   "devDependencies": {
-    "@manifest-configuration-language/language": "0.1.2",
+    "@manifest-configuration-language/language": "0.1.3",
     "@types/node": "24.19.2",
     "@types/vscode": "1.140.0",
     "@vscode/test-cli": "0.0.15",
