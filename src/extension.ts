@@ -1,10 +1,6 @@
 import * as vscode from "vscode";
 import { LanguageClient, RevealOutputChannelOn, State, Trace } from "vscode-languageclient/node";
-import {
-  createMCLDocumentSelector,
-  resolveServerPath,
-  SingleWatcherOwner,
-} from "./extensionUtilities.mjs";
+import { createMCLDocumentSelector, resolveServerPath } from "./extensionUtilities.mjs";
 
 const CONFIGURATION_SECTION = "mcl";
 const OUTPUT_CHANNEL_NAME = "MCL Language Server";
@@ -13,7 +9,6 @@ const MCL_CLI_INSTALL_URL =
 
 let client: LanguageClient | undefined;
 let outputChannel: vscode.LogOutputChannel | undefined;
-let fileWatcherOwner: SingleWatcherOwner<vscode.FileSystemWatcher> | undefined;
 let languageClientQueue: Promise<void> = Promise.resolve();
 let deactivating = false;
 
@@ -21,9 +16,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   deactivating = false;
   outputChannel = vscode.window.createOutputChannel(OUTPUT_CHANNEL_NAME, { log: true });
   context.subscriptions.push(outputChannel);
-  fileWatcherOwner = new SingleWatcherOwner();
-  const activeWatcherOwner = fileWatcherOwner;
-  context.subscriptions.push(new vscode.Disposable(() => activeWatcherOwner.dispose()));
 
   context.subscriptions.push(
     vscode.commands.registerCommand("mcl.restartLanguageServer", async () => {
@@ -62,8 +54,6 @@ export async function deactivate(): Promise<void> {
     if (activeClient) {
       await activeClient.stop();
     }
-    fileWatcherOwner?.dispose();
-    fileWatcherOwner = undefined;
   });
 }
 
@@ -103,10 +93,7 @@ async function startLanguageClient(): Promise<void> {
   };
   const clientOptions = {
     documentSelector: createMCLDocumentSelector(),
-    synchronize: {
-      configurationSection: CONFIGURATION_SECTION,
-      fileEvents: fileWatcherOwner!.get(() => vscode.workspace.createFileSystemWatcher("**/*.mcl")),
-    },
+    synchronize: { configurationSection: CONFIGURATION_SECTION },
     outputChannel,
     traceOutputChannel: outputChannel,
     trace: getTraceLevel(),

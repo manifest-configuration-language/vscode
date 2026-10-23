@@ -2,38 +2,13 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
-import {
-  createMCLDocumentSelector,
-  resolveServerPath,
-  SingleWatcherOwner,
-} from "../src/extensionUtilities.mjs";
+import { createMCLDocumentSelector, resolveServerPath } from "../src/extensionUtilities.mjs";
 
 test("MCL document selector includes saved and untitled documents", () => {
   assert.deepEqual(createMCLDocumentSelector(), [
     { scheme: "file", language: "mcl" },
     { scheme: "untitled", language: "mcl" },
   ]);
-});
-
-test("single watcher owner reuses one watcher and disposes it once", () => {
-  let created = 0;
-  let disposed = 0;
-  const owner = new SingleWatcherOwner();
-  const createWatcher = () => {
-    created += 1;
-    return { dispose: () => (disposed += 1) };
-  };
-
-  const first = owner.get(createWatcher);
-  for (let index = 0; index < 10; index += 1) {
-    assert.equal(owner.get(createWatcher), first);
-  }
-
-  assert.equal(created, 1);
-  owner.dispose();
-  owner.dispose();
-  assert.equal(disposed, 1);
-  assert.throws(() => owner.get(createWatcher), /disposed/);
 });
 
 test("server path uses the first workspace folder as its relative base", () => {

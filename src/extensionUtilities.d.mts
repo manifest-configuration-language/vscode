@@ -1,12 +1,3 @@
-export interface DisposableLike {
-  dispose(): void;
-}
-
-export declare class SingleWatcherOwner<T extends DisposableLike> {
-  get(createWatcher: () => T): T;
-  dispose(): void;
-}
-
 export declare function createMCLDocumentSelector(): {
   scheme: string;
   language: string;

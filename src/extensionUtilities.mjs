@@ -1,30 +1,6 @@
 import os from "node:os";
 import path from "node:path";
 
-export class SingleWatcherOwner {
-  #watcher;
-  #disposed = false;
-
-  get(createWatcher) {
-    if (this.#disposed) {
-      throw new Error("The file watcher owner has been disposed");
-    }
-
-    this.#watcher ??= createWatcher();
-    return this.#watcher;
-  }
-
-  dispose() {
-    if (this.#disposed) {
-      return;
-    }
-
-    this.#disposed = true;
-    this.#watcher?.dispose();
-    this.#watcher = undefined;
-  }
-}
-
 export function createMCLDocumentSelector() {
   return [
     { scheme: "file", language: "mcl" },
