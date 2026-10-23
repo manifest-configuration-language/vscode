@@ -10,7 +10,6 @@ if (!grammar) throw new Error("package.json does not declare the source.mcl gram
 const grammarPackagePath = import.meta
   .resolve("@manifest-configuration-language/language/textmate");
 const grammarSource = await readFile(new URL(grammarPackagePath), "utf8");
-JSON.parse(grammarSource);
 
 const destination = resolve(root, grammar.path);
 await mkdir(dirname(destination), { recursive: true });
