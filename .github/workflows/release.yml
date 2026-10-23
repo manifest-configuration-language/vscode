@@ -117,7 +117,6 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: read
-      id-token: write
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -139,26 +138,11 @@ jobs:
           name: mcl-vscode-${{ needs.package.outputs.version }}
           path: dist
 
-      - name: Sign in to Microsoft Entra
-        uses: Azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
-        with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          allow-no-subscriptions: true
-
-      - name: Show Marketplace identity
-        run: |
-          set -euo pipefail
-          profile_id="$(az rest \
-            --url https://app.vssps.visualstudio.com/_apis/profile/profiles/me \
-            --resource 499b84ac-1321-427f-aa17-267ca6975798 \
-            --query id \
-            --output tsv)"
-          echo "Marketplace identity profile ID: ${profile_id}" >> "$GITHUB_STEP_SUMMARY"
-
+      # TODO: Replace VSCE_PAT with Marketplace trusted publishing via --oidc when the Marketplace backend supports it.
       - name: Publish to Visual Studio Marketplace
         env:
           RELEASE_VERSION: ${{ needs.package.outputs.version }}
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
         run: |
           set -euo pipefail
           publish_flags=(--skip-duplicate)
@@ -166,7 +150,6 @@ jobs:
             publish_flags+=(--pre-release)
           fi
           pnpm exec vsce publish \
-            --azure-credential \
             --packagePath "dist/mcl-${RELEASE_VERSION}.vsix" \
             "${publish_flags[@]}"
 
