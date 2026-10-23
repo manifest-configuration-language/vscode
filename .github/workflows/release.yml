@@ -1,15 +1,13 @@
-name: Package VS Code extension
+name: Release VS Code extension
+run-name: Release ${{ inputs.version || 'automatic version' }}
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: Version from package.json. Empty uses the current manifest version.
+        description: Exact version to release. Empty uses package.json for the first release, then the next patch.
         required: false
         type: string
-  push:
-    tags:
-      - "v*"
 
 permissions:
   contents: read
@@ -19,18 +17,127 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  package:
+  prepare-release:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     outputs:
       version: ${{ steps.target.outputs.version }}
       tag: ${{ steps.target.outputs.tag }}
+      commit_sha: ${{ steps.version-commit.outputs.commit_sha }}
+    permissions:
+      contents: write
+    steps:
+      - name: Check out release source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Validate release target
+        id: target
+        env:
+          RELEASE_VERSION_INPUT: ${{ inputs.version }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REF" != "refs/heads/${DEFAULT_BRANCH}" ]; then
+            echo "Dispatch this workflow from the default branch." >&2
+            exit 1
+          fi
+
+          node --input-type=module <<'NODE'
+          import { execFileSync } from "node:child_process";
+          import { appendFileSync, readFileSync } from "node:fs";
+
+          const manifest = JSON.parse(readFileSync("package.json", "utf8"));
+          const parseVersion = (value) => {
+            const match = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$/.exec(value);
+            if (!match) throw new Error(`Invalid release version: ${value}`);
+            return [Number(match[1]), Number(match[2]), Number(match[3]), match[4] ?? null];
+          };
+          const compareVersions = (left, right) => {
+            const a = parseVersion(left);
+            const b = parseVersion(right);
+            for (let index = 0; index < 3; index++) {
+              if (a[index] !== b[index]) return a[index] - b[index];
+            }
+            if (a[3] === b[3]) return 0;
+            if (a[3] === null) return 1;
+            if (b[3] === null) return -1;
+            return a[3].localeCompare(b[3], undefined, { numeric: true });
+          };
+
+          const tags = execFileSync("git", ["tag", "--list", "v*", "--sort=-version:refname"], {
+            encoding: "utf8",
+          }).trim().split("\n").filter(Boolean);
+          const latestStableTag = tags.find((tag) => /^v\d+\.\d+\.\d+$/.test(tag));
+          const latestStableVersion = latestStableTag?.slice(1);
+          const requestedVersion = process.env.RELEASE_VERSION_INPUT;
+          let version = requestedVersion;
+
+          if (!version) {
+            if (!latestStableVersion) {
+              version = manifest.version;
+            } else if (compareVersions(manifest.version, latestStableVersion) > 0) {
+              version = manifest.version;
+            } else {
+              const [major, minor, patch] = parseVersion(latestStableVersion);
+              version = `${major}.${minor}.${patch + 1}`;
+            }
+          }
+
+          parseVersion(version);
+          if (latestStableVersion && compareVersions(version, latestStableVersion) <= 0) {
+            throw new Error(`Release version ${version} must be greater than ${latestStableVersion}.`);
+          }
+          if (compareVersions(version, manifest.version) < 0) {
+            throw new Error(`Release version ${version} must not be lower than package.json version ${manifest.version}.`);
+          }
+          if (tags.includes(`v${version}`)) {
+            throw new Error(`Release tag v${version} already exists.`);
+          }
+
+          appendFileSync(process.env.GITHUB_OUTPUT, `version=${version}\ntag=v${version}\n`);
+          NODE
+
+      - name: Update package version
+        id: version-commit
+        env:
+          RELEASE_VERSION: ${{ steps.target.outputs.version }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from "node:fs";
+
+          const manifest = JSON.parse(readFileSync("package.json", "utf8"));
+          manifest.version = process.env.RELEASE_VERSION;
+          writeFileSync("package.json", `${JSON.stringify(manifest, null, 2)}\n`);
+          NODE
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: release VS Code extension v${RELEASE_VERSION}"
+            git push origin "HEAD:refs/heads/${DEFAULT_BRANCH}"
+          fi
+          echo "commit_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  package:
+    needs: prepare-release
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      version: ${{ needs.prepare-release.outputs.version }}
+      tag: ${{ needs.prepare-release.outputs.tag }}
+      commit_sha: ${{ needs.prepare-release.outputs.commit_sha }}
     permissions:
       contents: read
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ needs.prepare-release.outputs.commit_sha }}
           persist-credentials: false
 
       - name: Set up mise
@@ -38,31 +145,6 @@ jobs:
         with:
           install: true
           cache: false
-
-      - name: Resolve release version
-        id: target
-        env:
-          RELEASE_VERSION_INPUT: ${{ inputs.version }}
-          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
-        run: |
-          set -euo pipefail
-          package_version="$(node -p "require('./package.json').version")"
-          if [ "$GITHUB_EVENT_NAME" = push ]; then
-            release_version="${GITHUB_REF_NAME#v}"
-          else
-            if [ "$GITHUB_REF" != "refs/heads/${DEFAULT_BRANCH}" ]; then
-              echo "Dispatch this workflow from the default branch." >&2
-              exit 1
-            fi
-            release_version="${RELEASE_VERSION_INPUT:-$package_version}"
-          fi
-          [[ "$release_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]
-          if [ "$release_version" != "$package_version" ]; then
-            echo "Release version $release_version must match package.json version $package_version." >&2
-            exit 1
-          fi
-          echo "version=$release_version" >> "$GITHUB_OUTPUT"
-          echo "tag=v$release_version" >> "$GITHUB_OUTPUT"
 
       - name: Run extension checks
         run: |
@@ -72,7 +154,7 @@ jobs:
 
       - name: Build VSIX
         env:
-          RELEASE_VERSION: ${{ steps.target.outputs.version }}
+          RELEASE_VERSION: ${{ needs.prepare-release.outputs.version }}
         run: |
           set -euo pipefail
           mise run compile
@@ -84,7 +166,7 @@ jobs:
       - name: Upload VSIX artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: mcl-vscode-${{ steps.target.outputs.version }}
+          name: mcl-vscode-${{ needs.prepare-release.outputs.version }}
           path: dist/*.vsix
           if-no-files-found: error
 
@@ -121,6 +203,7 @@ jobs:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ needs.package.outputs.commit_sha }}
           persist-credentials: false
 
       - name: Set up mise
@@ -176,6 +259,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.package.outputs.tag }}
           RELEASE_VERSION: ${{ needs.package.outputs.version }}
+          RELEASE_COMMIT_SHA: ${{ needs.package.outputs.commit_sha }}
         run: |
           set -euo pipefail
           release_flags=()
@@ -184,7 +268,7 @@ jobs:
           fi
           gh release create "$RELEASE_TAG" dist/*.vsix \
             --repo "$GITHUB_REPOSITORY" \
-            --target "$GITHUB_SHA" \
+            --target "$RELEASE_COMMIT_SHA" \
             --title "MCL VS Code $RELEASE_VERSION" \
             --generate-notes \
             "${release_flags[@]}"
