@@ -14,8 +14,11 @@ const MCL_CLI_INSTALL_URL =
 let client: LanguageClient | undefined;
 let outputChannel: vscode.LogOutputChannel | undefined;
 let fileWatcherOwner: SingleWatcherOwner<vscode.FileSystemWatcher> | undefined;
+let languageClientQueue: Promise<void> = Promise.resolve();
+let deactivating = false;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
+  deactivating = false;
   outputChannel = vscode.window.createOutputChannel(OUTPUT_CHANNEL_NAME, { log: true });
   context.subscriptions.push(outputChannel);
   fileWatcherOwner = new SingleWatcherOwner();
@@ -24,12 +27,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   context.subscriptions.push(
     vscode.commands.registerCommand("mcl.restartLanguageServer", async () => {
-      if (!client) {
-        await startLanguageClient();
-        return;
-      }
-
-      await client.restart();
+      await enqueueLanguageClientOperation(restartLanguageClient);
       outputChannel?.appendLine("MCL Language Serverを再起動しました。");
     }),
     vscode.commands.registerCommand("mcl.showLanguageServerOutput", () => {
@@ -40,7 +38,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         event.affectsConfiguration("mcl.server.path") ||
         event.affectsConfiguration("mcl.server.args")
       ) {
-        await restartLanguageClient();
+        await enqueueLanguageClientOperation(restartLanguageClient);
         return;
       }
 
@@ -49,24 +47,31 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
     }),
     vscode.workspace.onDidChangeWorkspaceFolders(async () => {
-      await restartLanguageClient();
+      await enqueueLanguageClientOperation(restartLanguageClient);
     }),
   );
 
-  await startLanguageClient();
+  await enqueueLanguageClientOperation(startLanguageClient);
 }
 
 export async function deactivate(): Promise<void> {
-  const activeClient = client;
-  client = undefined;
-  if (activeClient) {
-    await activeClient.stop();
-  }
-  fileWatcherOwner?.dispose();
-  fileWatcherOwner = undefined;
+  deactivating = true;
+  await enqueueLanguageClientOperation(async () => {
+    const activeClient = client;
+    client = undefined;
+    if (activeClient) {
+      await activeClient.stop();
+    }
+    fileWatcherOwner?.dispose();
+    fileWatcherOwner = undefined;
+  });
 }
 
 async function startLanguageClient(): Promise<void> {
+  if (deactivating) {
+    return;
+  }
+
   if (client && client.state !== State.Stopped) {
     return;
   }
@@ -139,12 +144,25 @@ async function startLanguageClient(): Promise<void> {
 }
 
 async function restartLanguageClient(): Promise<void> {
+  if (deactivating) {
+    return;
+  }
+
   const activeClient = client;
   client = undefined;
   if (activeClient) {
     await activeClient.stop();
   }
   await startLanguageClient();
+}
+
+function enqueueLanguageClientOperation(operation: () => Promise<void>): Promise<void> {
+  const result = languageClientQueue.then(operation);
+  languageClientQueue = result.catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    outputChannel?.appendLine(`MCL Language Serverのライフサイクル操作に失敗しました: ${message}`);
+  });
+  return languageClientQueue;
 }
 
 function getTraceLevel(): Trace {

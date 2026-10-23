@@ -153,15 +153,7 @@ jobs:
           mise run format:check
 
       - name: Build VSIX
-        env:
-          RELEASE_VERSION: ${{ needs.prepare-release.outputs.version }}
-        run: |
-          set -euo pipefail
-          mise run compile
-          node scripts/prepare-vsix.mjs
-          mkdir -p dist
-          pnpm exec vsce package --no-dependencies --out "dist/mcl-${RELEASE_VERSION}.vsix"
-          node scripts/verify-vsix.mjs "dist/mcl-${RELEASE_VERSION}.vsix"
+        run: mise run package
 
       - name: Upload VSIX artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

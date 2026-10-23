@@ -166,13 +166,13 @@ importers:
 
   .:
     dependencies:
-      '@manifest-configuration-language/language':
-        specifier: 0.1.2
-        version: 0.1.2(@codemirror/autocomplete@6.20.4)(@codemirror/language@6.13.1)(@codemirror/state@6.7.6)(@codemirror/view@6.43.15)
       vscode-languageclient:
         specifier: 10.1.2
         version: 10.1.2
     devDependencies:
+      '@manifest-configuration-language/language':
+        specifier: 0.1.2
+        version: 0.1.2(@codemirror/autocomplete@6.20.4)(@codemirror/language@6.13.1)(@codemirror/state@6.7.6)(@codemirror/view@6.43.15)
       '@types/node':
         specifier: 24.19.2
         version: 24.19.2
