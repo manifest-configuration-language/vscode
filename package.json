@@ -44,7 +44,8 @@
     "oxlint": "1.89.0",
     "typescript": "7.0.2",
     "vscode-oniguruma": "2.0.1",
-    "vscode-textmate": "9.3.2"
+    "vscode-textmate": "9.3.2",
+    "yauzl": "3.4.0"
   },
   "contributes": {
     "languages": [

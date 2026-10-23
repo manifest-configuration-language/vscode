@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { join, resolve } from "node:path";
 import textmate from "vscode-textmate";
 import oniguruma from "vscode-oniguruma";
+import yauzl from "yauzl";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const sourceManifest = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
@@ -12,19 +12,15 @@ const archivePath = process.argv[2]
   ? resolve(process.cwd(), process.argv[2])
   : join(root, `${sourceManifest.name}-${sourceManifest.version}.vsix`);
 try {
-  await readFile(archivePath);
+  await stat(archivePath);
 } catch {
   throw new Error(`VSIX archive is missing: ${archivePath}`);
 }
 
-const archiveFiles = new Set(
-  execFileSync("unzip", ["-Z1", archivePath], { encoding: "utf8" }).trim().split("\n"),
-);
-const packagedManifest = JSON.parse(
-  execFileSync("unzip", ["-p", archivePath, "extension/package.json"], {
-    encoding: "utf8",
-  }),
-);
+const archiveFiles = await readVsixEntries(archivePath);
+const packagedManifestContents = archiveFiles.get("extension/package.json");
+if (!packagedManifestContents) throw new Error("VSIX is missing extension/package.json.");
+const packagedManifest = JSON.parse(packagedManifestContents.toString("utf8"));
 const archiveAssetPaths = [
   packagedManifest.main,
   ...(packagedManifest.contributes?.languages ?? []).flatMap((language) => [
@@ -53,9 +49,9 @@ for (const grammar of grammars) {
     throw new Error(`VSIX is missing its declared grammar file: ${archiveEntry}`);
   }
 
-  const packagedGrammar = JSON.parse(
-    execFileSync("unzip", ["-p", archivePath, archiveEntry], { encoding: "utf8" }),
-  );
+  const packagedGrammarContents = archiveFiles.get(archiveEntry);
+  if (!packagedGrammarContents) throw new Error(`VSIX is missing its grammar file: ${archiveEntry}`);
+  const packagedGrammar = JSON.parse(packagedGrammarContents.toString("utf8"));
   assert.deepEqual(
     packagedGrammar,
     languageGrammar,
@@ -158,3 +154,52 @@ for (const grammar of grammars) {
 console.log(
   `Verified ${grammars.length} TextMate grammar(s) and ${archiveAssetPaths.length} manifest asset(s) in ${archivePath}.`,
 );
+
+function readVsixEntries(path) {
+  return new Promise((resolve, reject) => {
+    yauzl.open(path, { lazyEntries: true }, (openError, zipfile) => {
+      if (openError) {
+        reject(openError);
+        return;
+      }
+
+      const entries = new Map();
+      let settled = false;
+      const fail = (error) => {
+        if (settled) return;
+        settled = true;
+        zipfile.close();
+        reject(error);
+      };
+
+      zipfile.on("error", fail);
+      zipfile.on("end", () => {
+        if (settled) return;
+        settled = true;
+        resolve(entries);
+      });
+      zipfile.on("entry", (entry) => {
+        if (entry.fileName.endsWith("/")) {
+          zipfile.readEntry();
+          return;
+        }
+
+        zipfile.openReadStream(entry, (streamError, stream) => {
+          if (streamError) {
+            fail(streamError);
+            return;
+          }
+
+          const chunks = [];
+          stream.on("data", (chunk) => chunks.push(chunk));
+          stream.on("error", fail);
+          stream.on("end", () => {
+            entries.set(entry.fileName, Buffer.concat(chunks));
+            zipfile.readEntry();
+          });
+        });
+      });
+      zipfile.readEntry();
+    });
+  });
+}
