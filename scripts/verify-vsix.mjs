@@ -50,7 +50,8 @@ for (const grammar of grammars) {
   }
 
   const packagedGrammarContents = archiveFiles.get(archiveEntry);
-  if (!packagedGrammarContents) throw new Error(`VSIX is missing its grammar file: ${archiveEntry}`);
+  if (!packagedGrammarContents)
+    throw new Error(`VSIX is missing its grammar file: ${archiveEntry}`);
   const packagedGrammar = JSON.parse(packagedGrammarContents.toString("utf8"));
   assert.deepEqual(
     packagedGrammar,
