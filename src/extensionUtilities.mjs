@@ -19,7 +19,9 @@ export function resolveServerPath(
   const hasWorkspaceFolder = typeof workspaceFolderPath === "string" && workspaceFolderPath !== "";
 
   if (configuredPath.includes("${workspaceFolder}") && !hasWorkspaceFolder) {
-    throw new Error("mcl.server.path uses ${workspaceFolder}, but no workspace folder is open");
+    throw new Error(
+      "mcl.server.path uses ${workspaceFolder}, but the workspace does not have exactly one folder",
+    );
   }
 
   let expandedPath = configuredPath.replaceAll("${workspaceFolder}", workspaceFolderPath ?? "");

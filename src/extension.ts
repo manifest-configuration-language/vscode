@@ -19,8 +19,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   context.subscriptions.push(
     vscode.commands.registerCommand("mcl.restartLanguageServer", async () => {
-      await enqueueLanguageClientOperation(restartLanguageClient);
-      outputChannel?.appendLine("MCL Language Serverを再起動しました。");
+      const restarted = await enqueueLanguageClientOperation(restartLanguageClient);
+      if (restarted) {
+        outputChannel?.appendLine("MCL Language Serverを再起動しました。");
+      }
     }),
     vscode.commands.registerCommand("mcl.showLanguageServerOutput", () => {
       outputChannel?.show(true);
@@ -38,9 +40,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         client?.setTrace(getTraceLevel());
       }
     }),
-    vscode.workspace.onDidChangeWorkspaceFolders(async () => {
-      await enqueueLanguageClientOperation(restartLanguageClient);
-    }),
   );
 
   await enqueueLanguageClientOperation(startLanguageClient);
@@ -54,42 +53,37 @@ export async function deactivate(): Promise<void> {
     if (activeClient) {
       await activeClient.stop();
     }
+    return true;
   });
 }
 
-async function startLanguageClient(): Promise<void> {
+async function startLanguageClient(): Promise<boolean> {
   if (deactivating) {
-    return;
+    return false;
   }
 
   if (client && client.state !== State.Stopped) {
-    return;
+    return true;
   }
 
-  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-  const configuration = vscode.workspace.getConfiguration(
-    CONFIGURATION_SECTION,
-    workspaceFolder?.uri,
-  );
+  const configuration = vscode.workspace.getConfiguration(CONFIGURATION_SECTION);
   let command: string;
   try {
+    const workspaceFolders = vscode.workspace.workspaceFolders ?? [];
     command = resolveServerPath(
       configuration.get<string>("server.path", "mcl").trim() || "mcl",
-      workspaceFolder?.uri.fsPath,
+      workspaceFolders.length === 1 ? workspaceFolders[0].uri.fsPath : undefined,
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     outputChannel?.appendLine(`MCL Language Serverのpathを解決できませんでした: ${message}`);
     await vscode.window.showErrorMessage(message);
-    return;
+    return false;
   }
   const args = configuration.get<string[]>("server.args", ["lsp"]);
   const serverOptions = {
     command,
     args,
-    options: {
-      cwd: workspaceFolder?.uri.fsPath,
-    },
   };
   const clientOptions = {
     documentSelector: createMCLDocumentSelector(),
@@ -109,6 +103,7 @@ async function startLanguageClient(): Promise<void> {
     outputChannel?.appendLine(
       `MCL Language Serverを起動しました${version ? ` (version ${version})` : ""}: ${command} ${args.join(" ")}`,
     );
+    return true;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     outputChannel?.appendLine(`MCL Language Serverを起動できませんでした: ${message}`);
@@ -127,12 +122,13 @@ async function startLanguageClient(): Promise<void> {
       );
     }
     client = undefined;
+    return false;
   }
 }
 
-async function restartLanguageClient(): Promise<void> {
+async function restartLanguageClient(): Promise<boolean> {
   if (deactivating) {
-    return;
+    return false;
   }
 
   const activeClient = client;
@@ -140,16 +136,21 @@ async function restartLanguageClient(): Promise<void> {
   if (activeClient) {
     await activeClient.stop();
   }
-  await startLanguageClient();
+  return startLanguageClient();
 }
 
-function enqueueLanguageClientOperation(operation: () => Promise<void>): Promise<void> {
+function enqueueLanguageClientOperation(operation: () => Promise<boolean>): Promise<boolean> {
   const result = languageClientQueue.then(operation);
-  languageClientQueue = result.catch((error: unknown) => {
-    const message = error instanceof Error ? error.message : String(error);
-    outputChannel?.appendLine(`MCL Language Serverのライフサイクル操作に失敗しました: ${message}`);
-  });
-  return languageClientQueue;
+  languageClientQueue = result
+    .catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
+      outputChannel?.appendLine(
+        `MCL Language Serverのライフサイクル操作に失敗しました: ${message}`,
+      );
+      return false;
+    })
+    .then(() => undefined);
+  return result.catch(() => false);
 }
 
 function getTraceLevel(): Trace {

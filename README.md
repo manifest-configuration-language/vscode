@@ -21,7 +21,7 @@ pnpm run package
 | `mcl.server.args`  | `["lsp"]` | Language Server起動時に実行ファイルへ渡す引数です。                                                                     |
 | `mcl.trace.server` | `off`     | LSP通信ログの出力レベルです。`messages`または`verbose`を指定すると、Outputの`MCL Language Server` channelに記録します。 |
 
-CLIをPATH以外の場所に配置した場合は、ワークスペース設定で実行ファイルを指定します。
+CLIをPATH以外の場所に配置した場合は、ワークスペース設定で実行ファイルを指定します。複数folderのworkspaceでは`${workspaceFolder}`を使わず、PATH名または絶対pathを指定してください。
 
 ```json
 {
@@ -30,7 +30,7 @@ CLIをPATH以外の場所に配置した場合は、ワークスペース設定�
 }
 ```
 
-`mcl.server.path`のPATH名はPATHから検索し、絶対pathはそのまま使います。相対pathと`${workspaceFolder}`は先頭のworkspace folderを基準に解決します。複数folderを開いている場合もLanguage Serverは1つだけ起動し、先頭folderの設定と作業ディレクトリを使います。workspace folderがない場合、相対pathはVS Code Extension Hostの作業ディレクトリを基準にします。`${workspaceFolder}`を指定した状態でworkspace folderがない場合は起動エラーを表示します。
+`mcl.server.path`のPATH名はPATHから検索し、絶対pathはそのまま使います。相対pathはworkspace folderが1つの場合にそのfolderを基準に解決し、workspace folderが0個または複数の場合はVS Code Extension Hostの作業ディレクトリを基準にします。`${workspaceFolder}`はfolderが1つの場合だけ使用できます。Language Serverは1つ起動し、MCL Language Serverが複数のworkspace folderを処理します。
 
 Windowsでは`mcl.server.path`に`mcl.exe`のpathを設定します。
 

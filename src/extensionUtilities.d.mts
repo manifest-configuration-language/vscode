@@ -5,7 +5,7 @@ export declare function createMCLDocumentSelector(): {
 
 export declare function resolveServerPath(
   configuredPath: string,
-  workspaceFolderPath: string | undefined,
+  workspaceFolderPath?: string,
   workingDirectory?: string,
   homeDirectory?: string,
   platform?: NodeJS.Platform,

@@ -49,13 +49,16 @@ jobs:
             exit 1
           fi
 
-          npm version "$RELEASE_BUMP" --no-git-tag-version --ignore-scripts
-          RELEASE_VERSION=$(node -p "require('./package.json').version")
-          RELEASE_TAG="v${RELEASE_VERSION}"
-          if git show-ref --verify --quiet "refs/tags/${RELEASE_TAG}"; then
-            echo "Release tag ${RELEASE_TAG} already exists." >&2
-            exit 1
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          RELEASE_COMMIT_SUBJECT=$(git log -1 --format=%s)
+          if [ "$RELEASE_COMMIT_SUBJECT" = "chore: release VS Code extension v${CURRENT_VERSION}" ] &&
+            ! git show-ref --verify --quiet "refs/tags/v${CURRENT_VERSION}"; then
+            RELEASE_VERSION=$CURRENT_VERSION
+          else
+            npm version "$RELEASE_BUMP" --no-git-tag-version --ignore-scripts
+            RELEASE_VERSION=$(node -p "require('./package.json').version")
           fi
+          RELEASE_TAG="v${RELEASE_VERSION}"
           {
             echo "version=${RELEASE_VERSION}"
             echo "tag=${RELEASE_TAG}"
@@ -167,20 +170,10 @@ jobs:
           name: mcl-vscode-${{ needs.package.outputs.version }}
           path: dist
 
-      # TODO: Replace VSCE_PAT with Marketplace trusted publishing via --oidc when the Marketplace backend supports it.
       - name: Publish to Visual Studio Marketplace
         env:
-          RELEASE_VERSION: ${{ needs.package.outputs.version }}
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
-        run: |
-          set -euo pipefail
-          publish_flags=(--skip-duplicate)
-          if [[ "$RELEASE_VERSION" == *-* ]]; then
-            publish_flags+=(--pre-release)
-          fi
-          pnpm exec vsce publish \
-            --packagePath "dist/mcl-${RELEASE_VERSION}.vsix" \
-            "${publish_flags[@]}"
+        run: pnpm exec vsce publish --packagePath "dist/mcl-${{ needs.package.outputs.version }}.vsix" --skip-duplicate
 
   release:
     needs: [package, attest, publish-marketplace]
@@ -204,17 +197,18 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.package.outputs.tag }}
-          RELEASE_VERSION: ${{ needs.package.outputs.version }}
           RELEASE_COMMIT_SHA: ${{ needs.package.outputs.commit_sha }}
         run: |
           set -euo pipefail
-          release_flags=()
-          if [[ "$RELEASE_VERSION" == *-* ]]; then
-            release_flags+=(--prerelease)
+          VSIX_NAME="mcl-${RELEASE_TAG#v}.vsix"
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq ".assets[].name" | grep --fixed-strings --line-regexp --quiet "$VSIX_NAME"; then
+              gh release upload "$RELEASE_TAG" "dist/$VSIX_NAME" --repo "$GITHUB_REPOSITORY"
+            fi
+          else
+            gh release create "$RELEASE_TAG" "dist/$VSIX_NAME" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$RELEASE_COMMIT_SHA" \
+              --title "MCL VS Code ${RELEASE_TAG#v}" \
+              --generate-notes
           fi
-          gh release create "$RELEASE_TAG" dist/*.vsix \
-            --repo "$GITHUB_REPOSITORY" \
-            --target "$RELEASE_COMMIT_SHA" \
-            --title "MCL VS Code $RELEASE_VERSION" \
-            --generate-notes \
-            "${release_flags[@]}"
