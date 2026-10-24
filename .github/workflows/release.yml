@@ -49,6 +49,10 @@ jobs:
             exit 1
           fi
 
+          git fetch origin "refs/heads/${DEFAULT_BRANCH}:refs/remotes/origin/${DEFAULT_BRANCH}"
+          git fetch origin --tags
+          git checkout --detach "refs/remotes/origin/${DEFAULT_BRANCH}"
+
           CURRENT_VERSION=$(node -p "require('./package.json').version")
           RELEASE_COMMIT_SUBJECT=$(git log -1 --format=%s)
           if [ "$RELEASE_COMMIT_SUBJECT" = "chore: release VS Code extension v${CURRENT_VERSION}" ] &&
@@ -202,7 +206,18 @@ jobs:
           set -euo pipefail
           VSIX_NAME="mcl-${RELEASE_TAG#v}.vsix"
           if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq ".assets[].name" | grep --fixed-strings --line-regexp --quiet "$VSIX_NAME"; then
+            if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq ".assets[].name" | grep --fixed-strings --line-regexp --quiet "$VSIX_NAME"; then
+              existing_assets="$(mktemp -d)"
+              trap 'rm -rf "$existing_assets"' EXIT
+              gh release download "$RELEASE_TAG" \
+                --repo "$GITHUB_REPOSITORY" \
+                --dir "$existing_assets" \
+                --pattern "$VSIX_NAME"
+              if ! cmp --silent "dist/$VSIX_NAME" "$existing_assets/$VSIX_NAME"; then
+                printf 'Release %s already contains a different %s.\n' "$RELEASE_TAG" "$VSIX_NAME" >&2
+                exit 1
+              fi
+            else
               gh release upload "$RELEASE_TAG" "dist/$VSIX_NAME" --repo "$GITHUB_REPOSITORY"
             fi
           else
