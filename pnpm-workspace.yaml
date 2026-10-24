@@ -2,7 +2,7 @@ allowBuilds:
   "@vscode/vsce-sign": true
   esbuild: true
 minimumReleaseAgeExclude:
-  - "@manifest-configuration-language/language@0.3.2"
+  - "@manifest-configuration-language/language@0.3.6"
   - "@lezer/common@1.5.4"
   - oxlint
   - "@oxlint/*"
