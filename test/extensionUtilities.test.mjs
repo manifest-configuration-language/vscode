@@ -33,7 +33,7 @@ test("server path uses the first workspace folder as its relative base", () => {
   );
   assert.throws(
     () => resolveServerPath("${workspaceFolder}/bin/mcl", undefined),
-    /no workspace folder is open/,
+    /workspace does not have exactly one folder/,
   );
 });
 
