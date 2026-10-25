@@ -3,7 +3,7 @@ allowBuilds:
   esbuild: true
 minimumReleaseAge: 4320
 minimumReleaseAgeExclude:
-  - "@manifest-configuration-language/language@0.3.8"
+  - "@manifest-configuration-language/language"
   - "@lezer/common@1.5.4"
   - oxlint
   - "@oxlint/*"
