@@ -42,6 +42,7 @@ jobs:
         env:
           RELEASE_BUMP: ${{ inputs.bump }}
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
         run: |
           set -euo pipefail
           if [ "$GITHUB_REF" != "refs/heads/${DEFAULT_BRANCH}" ]; then
@@ -55,7 +56,14 @@ jobs:
 
           CURRENT_VERSION=$(node -p "require('./package.json').version")
           RELEASE_COMMIT_SUBJECT=$(git log -1 --format=%s)
-          if [ "$RELEASE_COMMIT_SUBJECT" = "chore: release VS Code extension v${CURRENT_VERSION}" ] &&
+          EXPECTED_RELEASE_SUBJECT="chore: release VS Code extension v${CURRENT_VERSION}"
+          if [ "$RUN_ATTEMPT" -gt 1 ]; then
+            if [ "$RELEASE_COMMIT_SUBJECT" != "$EXPECTED_RELEASE_SUBJECT" ]; then
+              echo "Cannot resume a release because the default branch does not end at its version commit." >&2
+              exit 1
+            fi
+            RELEASE_VERSION=$CURRENT_VERSION
+          elif [ "$RELEASE_COMMIT_SUBJECT" = "$EXPECTED_RELEASE_SUBJECT" ] &&
             ! git show-ref --verify --quiet "refs/tags/v${CURRENT_VERSION}"; then
             RELEASE_VERSION=$CURRENT_VERSION
           else
